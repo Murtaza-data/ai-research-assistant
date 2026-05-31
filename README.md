@@ -44,13 +44,4 @@ streamlit run app.py
 
 4. Enter your Groq API key in the sidebar
 
-## 🔑 API Key
-This app uses the Groq API which is free. Get your API key at https://console.groq.com
-
-## 📁 Project Structure
-ai-research-assistant/
-├── app.py
-├── agent.py
-├── requirements.txt
-└── README.md
 
