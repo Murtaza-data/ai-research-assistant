@@ -87,10 +87,19 @@ if st.session_state.report:
             st.warning("Please enter a question.")
         else:
             with st.spinner("Thinking..."):
+                # Build full conversation history
+                history = f"Main Report about {st.session_state.topic}:\n\n{st.session_state.report}\n\n"
+                if st.session_state.followup_answers:
+                    history += "Previous Follow-up Conversation:\n"
+                    for item in st.session_state.followup_answers:
+                        history += f"Q: {item['question']}\n"
+                        history += f"A: {item['answer']}\n\n"
+                history += f"New Question: {follow_up}"
+
                 llm = ChatGroq(model="llama-3.1-8b-instant", api_key=api_key)
                 response = llm.invoke([
-                    SystemMessage(content="You are a helpful assistant. Answer the follow-up question based on the provided research report. Be concise and relevant."),
-                    HumanMessage(content=f"Research Report about {st.session_state.topic}:\n\n{st.session_state.report}\n\nFollow-up Question: {follow_up}")
+                    SystemMessage(content="You are a helpful assistant. Answer the follow-up question based on the research report and previous conversation history. Be concise and relevant."),
+                    HumanMessage(content=history)
                 ])
                 st.session_state.followup_answers.append({
                     "question": follow_up,
