@@ -1,16 +1,21 @@
-
+import streamlit as st
 from typing import TypedDict, Annotated
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain_community.tools import DuckDuckGoSearchRun
 from langgraph.graph.message import add_messages
+from tavily import TavilyClient
 
-search = DuckDuckGoSearchRun()
+# ── Web search via Tavily (key hidden in Streamlit Secrets) ──
+# Replaces DuckDuckGo, which gets blocked on cloud datacenter IPs.
+def web_search(query):
+    client = TavilyClient(api_key=st.secrets["TAVILY_API_KEY"])
+    response = client.search(query, max_results=5)
+    return "\n".join(r.get("content", "") for r in response.get("results", []))
 
 def get_llm(api_key):
-    return ChatGroq(model="llama-3.1-8b-instant", api_key=api_key)
+    return ChatGroq(model="llama-3.3-70b-versatile", api_key=api_key)
 
 class ResearchState(TypedDict):
     messages: Annotated[list, add_messages]
@@ -28,7 +33,7 @@ def planner_node(state, llm):
     return {"sub_questions": [response.content], "messages": [AIMessage(content="Planning done.")]}
 
 def researcher_node(state, llm):
-    search_results = search.run(state["topic"])
+    search_results = web_search(state["topic"])
     response = llm.invoke([
         SystemMessage(content="You are an expert researcher. Use the search results to find key information."),
         HumanMessage(content=f"Sub-questions: {state['sub_questions'][0]}\n\nSearch Results: {search_results}")
