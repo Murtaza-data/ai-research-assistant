@@ -4,32 +4,45 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 import uuid
 
-# ── Mem0 — long-term, cross-session memory (hosted) ──
-# Key stored in Streamlit Secrets. Wrapped so the app still works if Mem0 is unavailable.
+# ════════════════════════════════════════════════════════
+# MEM0 — long-term memory (errors are VISIBLE for debugging)
+# ════════════════════════════════════════════════════════
+
 def get_memory():
     try:
         from mem0 import MemoryClient
         return MemoryClient(api_key=st.secrets["MEM0_API_KEY"])
-    except Exception:
+    except Exception as e:
+        st.session_state["mem_error"] = str(e)
         return None
 
 mem_client = get_memory()
 
 def save_memory(messages, user_id):
-    if mem_client and user_id:
-        try:
-            mem_client.add(messages, user_id=user_id)
-        except Exception:
-            pass
+    if not mem_client or not user_id:
+        return
+    try:
+        mem_client.add(messages, user_id=user_id)
+    except Exception as e:
+        st.error(f"Mem0 SAVE error: {e}")
 
 def recall_memory(query, user_id):
-    if mem_client and user_id:
-        try:
-            results = mem_client.search(query, user_id=user_id)
-            return "\n".join(m.get("memory", "") for m in results)
-        except Exception:
-            return ""
-    return ""
+    if not mem_client or not user_id:
+        return ""
+    try:
+        results = mem_client.search(query, user_id=user_id)
+        # Handle both possible response shapes (list, or dict with "results")
+        if isinstance(results, dict):
+            results = results.get("results", [])
+        mems = [m.get("memory", "") for m in results if isinstance(m, dict)]
+        return "\n".join(mems)
+    except Exception as e:
+        st.error(f"Mem0 SEARCH error: {e}")
+        return ""
+
+# ════════════════════════════════════════════════════════
+# UI SETUP
+# ════════════════════════════════════════════════════════
 
 st.set_page_config(page_title="AI Research Assistant", page_icon="🔍", layout="wide")
 st.title("🔍 AI Research Assistant")
@@ -38,7 +51,16 @@ st.caption("Powered by LangGraph + Groq + Mem0")
 with st.sidebar:
     st.header("Settings")
     api_key = st.text_input("Enter Groq API Key", type="password")
-    username = st.text_input("Your name (for memory)", placeholder="e.g. mohammad")
+    username = st.text_input("Username", placeholder="e.g. mohammad")
+
+    # Memory connection status (visible diagnostic)
+    if mem_client:
+        st.success("🧠 Memory connected")
+    else:
+        st.error("🧠 Memory NOT connected")
+        if st.session_state.get("mem_error"):
+            st.caption(st.session_state["mem_error"])
+
     st.markdown("---")
     st.markdown("### How it works")
     st.markdown("1. 🧠 Planner breaks topic into questions")
@@ -47,7 +69,6 @@ with st.sidebar:
     st.markdown("4. ✅ Reviewer improves the report")
     st.markdown("---")
     st.markdown("🧠 **Mem0** remembers your research across sessions")
-    st.markdown("---")
     st.markdown("Built by **Mohammad Murtaza**")
 
 # ── Session state ─────────────────────────────────────
@@ -65,15 +86,15 @@ if "followup_answers" not in st.session_state:
 if api_key and st.session_state.graph_app is None:
     st.session_state.graph_app = build_graph(api_key)
 
-# ── Welcome back — show what Mem0 remembers about this user ──
+# ── Welcome back — show what Mem0 remembers (proof it works) ──
 if username and mem_client:
     past = recall_memory("past research topics and interests", username)
     if past:
-        with st.expander(f"📚 What I remember about {username}", expanded=False):
+        with st.expander(f"📚 What I remember about {username}", expanded=True):
             st.markdown(past)
 
 # ════════════════════════════════════════════════════════
-# 1. GENERATE A REPORT (the 4-agent pipeline)
+# 1. MAIN — generate a report (remembers past sessions)
 # ════════════════════════════════════════════════════════
 
 topic = st.text_input("Enter a research topic:", placeholder="e.g. What is Machine Learning?", key="topic_input")
@@ -85,15 +106,20 @@ if st.button("Generate Report", type="primary", key="generate_btn"):
         st.error("Please enter a research topic.")
     else:
         with st.spinner("Researching and writing report... please wait..."):
+            # Recall related past research → feed it into the pipeline
+            memory_context = recall_memory(topic, username)
+
             config = {"configurable": {"thread_id": st.session_state.thread_id}}
             result = st.session_state.graph_app.invoke({
                 "topic": topic,
+                "memory_context": memory_context,
                 "messages": [HumanMessage(content=f"Research topic: {topic}")],
                 "sub_questions": [],
                 "research": "",
                 "report": "",
                 "reviewed_report": ""
             }, config=config)
+
             st.session_state.report = result["reviewed_report"]
             st.session_state.topic = topic
             st.session_state.followup_answers = []
@@ -101,10 +127,14 @@ if st.button("Generate Report", type="primary", key="generate_btn"):
             # Save this research to long-term memory
             save_memory([
                 {"role": "user", "content": f"Researched the topic: {topic}"},
-                {"role": "assistant", "content": result["reviewed_report"][:2000]}
+                {"role": "assistant", "content": result["reviewed_report"][:1500]}
             ], username)
 
             st.rerun()
+
+# ════════════════════════════════════════════════════════
+# 2. REPORT + FOLLOW-UP (appears after a report exists)
+# ════════════════════════════════════════════════════════
 
 if st.session_state.report:
     st.markdown("---")
@@ -121,12 +151,11 @@ if st.session_state.report:
 
     if st.session_state.followup_answers:
         st.markdown("### Follow-up Answers")
-        for i, item in enumerate(st.session_state.followup_answers):
+        for item in st.session_state.followup_answers:
             st.markdown(f"**Q: {item['question']}**")
             st.markdown(item["answer"])
             st.markdown("---")
 
-    # ── Follow-up (short-term: uses this session's report + history) ──
     st.markdown("---")
     st.subheader("💬 Ask a follow-up question")
     follow_up = st.text_input("Your question:", placeholder="e.g. What are the limitations?", key="followup_input")
@@ -136,17 +165,23 @@ if st.session_state.report:
             st.warning("Please enter a question.")
         else:
             with st.spinner("Thinking..."):
+                # Short-term: this session's report + follow-up history
                 history = f"Main Report about {st.session_state.topic}:\n\n{st.session_state.report}\n\n"
                 if st.session_state.followup_answers:
                     history += "Previous Follow-up Conversation:\n"
                     for item in st.session_state.followup_answers:
-                        history += f"Q: {item['question']}\n"
-                        history += f"A: {item['answer']}\n\n"
+                        history += f"Q: {item['question']}\nA: {item['answer']}\n\n"
+
+                # Long-term: relevant memories from past sessions
+                past_mem = recall_memory(follow_up, username)
+                if past_mem:
+                    history += f"Relevant memory from past sessions:\n{past_mem}\n\n"
+
                 history += f"New Question: {follow_up}"
 
                 llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=api_key)
                 response = llm.invoke([
-                    SystemMessage(content="You are a helpful assistant. Answer the follow-up question based on the research report and previous conversation history. Be concise and relevant."),
+                    SystemMessage(content="You are a helpful assistant. Answer the follow-up question using the research report, this session's conversation, and any relevant past-session memory. Be concise and relevant."),
                     HumanMessage(content=history)
                 ])
                 st.session_state.followup_answers.append({
@@ -161,38 +196,3 @@ if st.session_state.report:
                 ], username)
 
                 st.rerun()
-
-# ════════════════════════════════════════════════════════
-# 2. MEMORY CHAT — talk to your long-term memory (cross-session)
-# ════════════════════════════════════════════════════════
-# This works even in a brand-new session: it retrieves what Mem0
-# stored about you in the past and answers from it.
-
-st.markdown("---")
-st.subheader("🧠 Memory Chat — continue from past sessions")
-st.caption("Ask about anything you researched before, even on a previous day.")
-
-mem_question = st.text_input("Ask your memory:", placeholder="e.g. Summarize what we discussed about machine learning", key="mem_input")
-
-if st.button("Ask Memory", key="mem_btn"):
-    if not api_key:
-        st.error("Please enter your Groq API key.")
-    elif not username:
-        st.error("Please enter your name in the sidebar so I know whose memory to use.")
-    elif not mem_question:
-        st.warning("Please enter a question.")
-    elif not mem_client:
-        st.error("Memory service is unavailable right now.")
-    else:
-        with st.spinner("Recalling your past research..."):
-            memories = recall_memory(mem_question, username)
-            llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=api_key)
-            response = llm.invoke([
-                SystemMessage(content="You are a helpful assistant with memory of the user's past research. Use the remembered information below to answer. If the memory doesn't cover it, say so honestly."),
-                HumanMessage(content=f"What I remember about {username}:\n{memories}\n\nQuestion: {mem_question}")
-            ])
-            st.markdown("### 🧠 From your memory:")
-            st.markdown(response.content)
-            if memories:
-                with st.expander("🔍 Raw memories used"):
-                    st.text(memories)
