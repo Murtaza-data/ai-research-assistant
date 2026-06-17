@@ -5,3 +5,5 @@ langchain-community
 duckduckgo-search
 ddgs
 streamlit
+tavily-python
+mem0ai
