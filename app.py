@@ -30,7 +30,8 @@ def recall_memory(query, user_id):
     if not mem_client or not user_id:
         return ""
     try:
-        results = mem_client.search(query, user_id=user_id)
+        # Newer Mem0 API: user_id goes inside filters={}
+        results = mem_client.search(query, filters={"user_id": user_id})
         # Handle both possible response shapes (list, or dict with "results")
         if isinstance(results, dict):
             results = results.get("results", [])
