@@ -3,7 +3,7 @@
 An intelligent research assistant powered by a multi-agent system built with LangGraph and Groq LLM. Give it any topic and it will research the web, analyze the information, and generate a professional structured report — and it remembers your research across sessions.
 
 ## 🚀 Live Demo
-**👉 [Click here to try the app](YOUR_APP_URL)**
+**👉 [Click here to try the app](https://ai-research-assistant-i2ep8ufovhkbpcxnrzawdy.streamlit.app/)**
 
 ## 🤖 How it works
 The app uses a 4-agent pipeline powered by LangGraph:
