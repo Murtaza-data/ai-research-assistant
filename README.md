@@ -12,7 +12,7 @@ Researching a topic properly means searching the web, reading multiple sources, 
 ## 🏗️ Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     U[User enters topic] --> MEM[Recall past research - Mem0]
     MEM --> P[Planner - break into questions]
     P --> R[Researcher - Tavily web search]
