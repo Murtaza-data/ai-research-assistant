@@ -1,59 +1,77 @@
-# 🔍 AI Research Assistant
+# 🔍 AI Research Assistant — Multi-Agent + Persistent Memory
 
-An intelligent research assistant powered by a multi-agent system built with LangGraph and Groq LLM. Give it any topic and it will research the web, analyze the information, and generate a professional structured report — and it remembers your research across sessions.
+An intelligent research assistant that takes any topic, researches the web, and generates a structured report using a 4-agent LangGraph pipeline. With Mem0, it remembers your research across sessions.
 
 ## 🚀 Live Demo
+
 **👉 [Click here to try the app](https://ai-research-assistant-i2ep8ufovhkbpcxnrzawdy.streamlit.app/)**
 
-## 🤖 How it works
-The app uses a 4-agent pipeline powered by LangGraph:
+## 📌 The Business Problem
+Researching a topic properly means searching the web, reading multiple sources, organizing findings, and writing it up — slow, manual work. **This assistant automates the whole research-to-report process** with a team of specialized agents, and remembers what you researched before so it builds on past work instead of starting over.
 
-- 🧠 **Planner Agent** — breaks your topic into 3 specific research questions
-- 🔍 **Researcher Agent** — searches the web for relevant information using Tavily
-- ✍️ **Writer Agent** — writes a structured report with Introduction, Key Findings, and Conclusion
-- ✅ **Reviewer Agent** — improves and polishes the final report
+## 🏗️ Architecture
 
-You can ask follow-up questions after the report is generated, and thanks to **Mem0**, the assistant remembers your past research even across different sessions.
+```mermaid
+flowchart LR
+    U[User enters topic] --> MEM[Recall past research - Mem0]
+    MEM --> P[Planner - break into questions]
+    P --> R[Researcher - Tavily web search]
+    R --> W[Writer - structured report]
+    W --> RV[Reviewer - polish]
+    RV --> OUT[Final report]
+    OUT --> SAVE[Save to memory - Mem0]
+```
 
-## 💬 Features
-- Multi-agent research pipeline using LangGraph
-- **Persistent long-term memory (Mem0)** — remembers your research across sessions, even on different days
-- Real-time web search using Tavily
-- Follow-up questions with full report context
-- Structured professional reports
-- Download report as text file
-- Clean and simple Streamlit interface
+## ⚙️ The 4-Agent Pipeline
+1. **Planner** — breaks the topic into 3 specific research questions
+2. **Researcher** — searches the web using Tavily
+3. **Writer** — writes a structured report (Introduction, Key Findings, Conclusion)
+4. **Reviewer** — improves and polishes the final report
 
 ## 🧠 Two Memory Layers
-- **Short-term** — within a session, follow-ups have the full report context (LangGraph checkpointer)
-- **Long-term (Mem0)** — research is saved per user and recalled in future sessions, so reports build on your past work
+- **Short-term** — follow-ups have the full report context within a session
+- **Long-term (Mem0)** — research is saved per user and recalled in future sessions, even on different days
+
+## ✅ Results / What It Does
+- **4-agent pipeline** orchestrated with LangGraph
+- **Persistent cross-session memory** (Mem0) — reports build on your past research
+- **Real-time web search** via Tavily
+- Follow-up questions with full context; downloadable reports
+
+## 📸 Screenshots
+
+**Generated report**
+
+![Generated report](screenshots/report.png)
+
+<br>
+
+**Memory recall across sessions**
+
+![Memory recall](screenshots/memory.png)
+
+<br>
 
 ## 🛠️ Tech Stack
-- **LangGraph** — multi-agent workflow orchestration
-- **Groq + LLaMA 3.3 70B** — free LLM
-- **LangChain** — LLM framework
-- **Mem0** — persistent cross-session memory
-- **Tavily** — real-time web search
-- **Streamlit** — web interface
-
+- **Orchestration:** LangGraph (4-agent pipeline)
+- **LLM:** Groq + LLaMA 3.3 70B
+- **Memory:** Mem0 (persistent, cross-session)
+- **Web Search:** Tavily
+- **Framework:** LangChain
+- **Frontend:** Streamlit
 
 ## ▶️ Run Locally
-
-1. Clone the repo
+1. Clone the repo:
+```
 git clone https://github.com/Murtaza-data/ai-research-assistant.git
 cd ai-research-assistant
-
-2. Install dependencies
+```
+2. Install dependencies:
+```
 pip install -r requirements.txt
-
-3. Add your keys (Tavily and Mem0 in `.streamlit/secrets.toml`, Groq in the sidebar):
-
-TAVILY_API_KEY = "your-tavily-key"
-MEM0_API_KEY = "your-mem0-key"
-
-4. Run the app
+```
+3. Add Tavily and Mem0 keys to `.streamlit/secrets.toml`, enter your Groq key in the sidebar
+4. Run the app:
+```
 streamlit run app.py
-
-
-
-
+```
