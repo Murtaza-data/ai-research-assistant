@@ -54,7 +54,7 @@ flowchart TD
 
 ## 🛠️ Tech Stack
 - **Orchestration:** LangGraph (4-agent pipeline)
-- **LLM:** Groq + LLaMA 3.3 70B
+- **LLM:** Groq + GPT-OSS 120B
 - **Memory:** Mem0 (persistent, cross-session)
 - **Web Search:** Tavily
 - **Framework:** LangChain
