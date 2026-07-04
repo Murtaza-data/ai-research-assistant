@@ -180,7 +180,7 @@ if st.session_state.report:
 
                 history += f"New Question: {follow_up}"
 
-                llm = ChatGroq(model="llama-3.3-70b-versatile", api_key=api_key)
+                llm = ChatGroq(model="openai/gpt-oss-120b", api_key=api_key)
                 response = llm.invoke([
                     SystemMessage(content="You are a helpful assistant. Answer the follow-up question using the research report, this session's conversation, and any relevant past-session memory. Be concise and relevant."),
                     HumanMessage(content=history)
